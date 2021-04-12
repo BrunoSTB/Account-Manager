@@ -1,0 +1,298 @@
+#include <stdlib.h> 
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+
+char username[100];
+char password[33];
+char role[100];
+
+char buffer;
+
+bool access_account();
+bool create_account();
+bool delete_account();
+bool name_check(char* check);
+
+int main(void)
+{
+    // Main Menu
+    printf("\n- ACCOUNT MANAGEMENT SYSTEM - \n\n");
+    
+    printf("1. LOGIN\n");
+    printf("2. Create an account\n");
+    printf("3. Delete an account\n");
+    printf("9. Exit the program\n");
+    
+    // Option select
+    int option = 0;
+    printf("\nSelect your option: ");
+    scanf("%d", &option);
+    
+    // Loop to check if option number is equivalent as any of the cases in the switch/case block.
+    while (option < 1 || (option > 3 && option != 9))
+    {
+        printf("\nInvalid Option, type again: ");
+        scanf("%d", &option);
+    }
+    
+    // Selects the functionality
+    switch (option)
+    {
+        case 1:
+            access_account();
+            break;
+            
+        case 2:
+            create_account();
+            break;
+            
+        case 3:
+            delete_account();
+            break;
+            
+        case 9:
+            return 0;
+            break;
+    }
+}
+
+bool access_account()
+{
+    // Opens the accounts text file (accounts.csv).
+    FILE *file = fopen("accounts.csv", "r");
+    if (!file)
+    {
+        fclose(file);
+        return false;
+    }
+    
+    
+    // Clears Buffer
+    scanf("%c", &buffer);
+    
+    
+    // Asks user for username.
+    printf("\nUsername: ");
+    fgets(username, 99, stdin);
+    
+    // Asks user for password.
+    printf("Password: ");
+    fgets(password, 32, stdin);
+
+    
+    // the  "xxxx[strcspn(xxxx, "\n")] = 0;" removes the new line that the fgets function reads in the end.
+    username[strcspn(username, "\n")] = 0;
+    password[strcspn(password, "\n")] = 0;
+    
+    
+    // Access the account
+    char line_check[1024];
+    while (fgets(line_check, 1023, file))
+    {
+        // Checks if the username is registered.
+        char *token_username = strtok(line_check, ",");
+        if (strcmp(token_username,username) == 0)
+        {
+            // Checks if passwords match.
+            char *token_password = strtok(NULL, ",");
+            if(strcmp(token_password,password) == 0)
+            {
+                // Prints username, password and role of the person.
+                //char* token_role = strtok(NULL, ",");
+                strcpy(role, strtok(NULL, ","));
+                printf("\nUsername: %s\n", username);
+                printf("Password: %s\n", password);
+                printf("Role:     %s\n", role);
+                
+                fclose(file);
+                return true;
+            }
+            
+            // If the password is wrong.
+            else
+            {
+                printf("\nEither username unregistered or wrong password.\n");
+                fclose(file);
+                return false;
+            }
+        } 
+    }
+    
+    // If there is no username registered.
+    printf("\nEither username unregistered or wrong password.\n");
+    fclose(file);
+    return false;
+}
+
+
+bool create_account()
+{
+    // Opens file in append mode.
+    FILE *file = fopen("accounts.csv", "a");
+    if (!file)
+    {
+        return false;
+    }
+    
+    
+    // Clears buffer.
+    scanf("%c", &buffer);
+    
+    
+    // Asks user to insert his username.
+    // Every fgets must be followed by the "variableName[strcspn(variableName, "\n")] = 0;" in order to remove the "\n" that 'fgets' reads in the end.
+    // Otherwise, a row will be created, not a line.
+    printf("\n\nUsername: ");
+    fgets(username, 99, stdin);
+    username[strcspn(username, "\n")] = 0;
+    
+    // Checks if username is already registered.
+    if (name_check(username) == true)
+    {
+        printf("\nUsername already registered!\n");
+        fclose(file);
+        return false;
+    }
+    // If username isn't registered, it allows the user to continue.
+    else
+    {
+        // Asks user to create password.
+        printf("Password: ");
+        fgets(password, 32, stdin);
+        password[strcspn(password, "\n")] = 0;
+        
+        // Asks user for his role.
+        printf("Role: ");
+        fgets(role, 99, stdin);
+        role[strcspn(role, "\n")] = 0;
+        
+        // Prints on the file, the user's username, password and role, respectively.
+        fprintf(file, "%s,%s,%s\n", username, password, role);
+        
+        // Closes file and returns.
+        fclose(file);
+        return true;
+    }
+    
+    
+    
+}
+
+
+bool delete_account()
+{
+    // Clears buffer
+    scanf("%c", &buffer);
+
+    
+    // Opens files, reading from "accounts.csv" and writing to "accountscopy.csv".
+    FILE *file = fopen("accounts.csv", "r");
+    if (!file)
+    {
+        return false;
+    }
+    
+    FILE *temp_file = fopen("accountscopy.csv", "w");
+    
+    
+    // Select which account to delete
+    printf("\n\nInsert account's username to delete: ");
+    fgets(username, sizeof(username), stdin);
+    username[strcspn(username, "\n")] = 0;
+    
+    
+    // Checks if username is registered.
+    if(!name_check(username))
+    {
+        printf("\nUsername not registered!\n");
+        fclose(file);
+        fclose(temp_file);
+        return false;
+    }
+
+
+    // Copies file to temp_file, without the line to be deleted.
+    char line[1024];
+    while (fgets(line, 1023, file))
+    {
+        // Checks if it is the file to be deleted, if it is, doesnt copy this line and goes to the next one.
+        char *token_username = strtok(line, ",");
+        if(strstr(token_username, username))
+        {
+            continue;
+        }
+        // If it isn't the file to be deleted, copies it to "accountscopy.csv".
+        else
+        {
+            char *token_password = strtok(NULL, ",");
+            char *token_role = strtok(NULL, ",");
+            
+            fprintf(temp_file, "%s,%s,%s", token_username, token_password, token_role);
+        }
+    }
+    
+    
+    // Closes files.
+    fclose(file);
+    fclose(temp_file);
+    
+    // Reopens files, writing on "accounts.csv" and reading from "accountscopy.csv".
+    file = fopen("accounts.csv", "w");
+    if (!file)
+    {
+        return false;
+    }
+    
+    temp_file = fopen("accountscopy.csv", "r");
+    if (!temp_file)
+    {
+        return false;
+    }
+
+
+    // Copies "accountscopy.csv" to "accounts.csv".
+    while (fgets(line, 1023, temp_file))
+    {
+        char *token_username = strtok(line, ",");
+        char *token_password = strtok(NULL, ",");
+        char *token_role = strtok(NULL, ",");
+
+        fprintf(file, "%s,%s,%s", token_username, token_password, token_role);
+    }
+    
+    // Closes files and return.
+    fclose(file);
+    fclose(temp_file);
+    return true;
+}
+
+
+bool name_check(char* check)
+{
+    // Opens file in read mode.
+    FILE *file = fopen("accounts.csv", "r");
+    if (!file)
+    {
+        return false;
+    }
+    
+    // Gets each line of text from the file
+    char line_check[1024];
+    while (fgets(line_check, 1023, file))
+    {
+        // Checks if there is a match for the string in the 'check' variable.
+        char *token_name = strtok(line_check, ",");
+        if (strstr(token_name, check))
+        {
+            // If it finds, closes file and returns true.
+            fclose(file);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+
+
